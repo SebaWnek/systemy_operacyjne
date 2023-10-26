@@ -16,9 +16,17 @@
 
 typedef struct
 {
+	char command;
+	char name[NAME_MAX_L + 1];
+        char *text[MSG_MAX_L];
+} msg_data;
+
+typedef struct
+{
         long messageType;
-        char messageText[MSG_MAX_L];
+        msg_data messageText;
 } IPC_message;
+
 
 long hash(char* name, int length);
 bool getString(char *string, int length, bool spaceAllowed);

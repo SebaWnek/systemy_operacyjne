@@ -4,7 +4,7 @@
 #include <ctype.h>
 #include "commons.h"
 
-#define BASE 4
+#define HASH_BASE 4
 
 /*
 *       Assuming all ASCI characters availible their values are between 33 and 126 inclusive.
