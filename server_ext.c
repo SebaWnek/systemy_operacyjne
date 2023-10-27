@@ -8,12 +8,7 @@
 #include <signal.h>
 #include "commons_ext.h"
 
-/*
-*	I'm using simple one byte commands for admin application
-*	Command 0 - register client, 
-*	Command 1 - unregister client, 
-*	Command 2 - signal other client
-*/
+
 
 #define MAX_CLIENTS 10
 #define PID_MAX_CHAR 6 //I'm assuming max PID of 32768 as default one + '\0'
@@ -27,7 +22,7 @@ void exitHandler(int signal);
 typedef struct
 {
 	char name[NAME_MAX_L + 1];
-	int processPid;
+	__pid_t processPid;
 } client_data;
 
 client_data clients[MAX_CLIENTS];
@@ -38,8 +33,8 @@ int main()
 {
 	signal(SIGINT, exitHandler);
 	
-	key_t key;
 	IPC_message current_msg;
+	key_t key;
 	msg_data *data;
 
 	printf("Message queue starting...\n");
@@ -53,10 +48,9 @@ int main()
 	while(true)
 	{
         msgrcv(msgid, &current_msg, sizeof(current_msg), ADMIN_ID , 0);
-        printf("Message received: %s\n", current_msg.messageText);
-		data = (msg_data*)current_msg.messageText;
+        printf("Message received: %c:%s:%s\n", current_msg.messageText.command, current_msg.messageText.name, current_msg.messageText.text);
 		
-		switch(data->command)
+		switch(current_msg.messageText.command)
 		{
 			case REG_COMMAND:
 				registerClient(&current_msg);
@@ -80,25 +74,30 @@ int main()
 int registerClient(IPC_message *msg)
 {
 	int existing;
+	__pid_t pid = atoi(msg->messageText.text);
 	if (clients_count >= MAX_CLIENTS)
 	{
 		fprintf(stderr, "Max clients number reached\n");
+		//Using SIGUSR2 to signal client it wasn't able to be registered
+		kill(pid,SIGUSR2);
 		return 1;
 	}
-	msg_data *data = (void*)msg->messageText;
-	if(getPid(data->name) == -1) //check if name not already on a list
+
+	if(getPid(msg->messageText.name) == -1) //check if name not already on a list, -1 means not found
 	{	
-		strcpy(clients[clients_count].name, data->name);
-		clients[clients_count].processPid = atoi(data->pid);
+		strcpy(clients[clients_count].name, msg->messageText.name);
+		clients[clients_count].processPid = pid;
 		printf("Registered client name: %s, pid: %d\n", clients[clients_count].name, clients[clients_count].processPid);
 		clients_count++;
 	}
+
 	else
 	{
-		printf("Name %s already registered!\n", data->name);
-		kill(atoi(data->pid),SIGUSR2);
+		printf("Name %s already registered!\n", msg->messageText.name);
+		kill(pid,SIGUSR2);
 		return 1;
 	}
+
 	return 0;
 }
 
@@ -110,18 +109,16 @@ int unregisterClient(IPC_message *msg)
 //Using SIGUSR1 to inform client about incoming message
 int signalClient(IPC_message *msg)
 {
-	msg_data *data = (void*)msg->messageText;
-	int pid = getPid(data->name);
-	if(pid = -1)
+	int pid = getPid(msg->messageText.name);
+	if(pid == -1)
 	{
-		printf("No client with \"%s\" name registered!\n", data->name);
+		printf("No client with \"%s\" name registered!\n", msg->messageText.name);
 		return 1;
 	}
 	kill(pid, SIGUSR1);
-	printf("Signaled client name: %s, pid: %d\n", data->name, pid);
+	printf("Signaled client name: %s, pid: %d\n", msg->messageText.name, pid);
 	return 0;
 }
-
 
 int getPid(char *name)
 {
@@ -140,6 +137,11 @@ int getPid(char *name)
 
 void exitHandler(int signal)
 {
+	//Using SIGTERM to terminate all clients
+	for(int i = 0; i < clients_count; i++)
+	{
+		kill(clients[i].processPid, SIGTERM);
+	}
 	msgctl(msgid, IPC_RMID, NULL);
 	printf("\nBye!\n");
 	exit(1);

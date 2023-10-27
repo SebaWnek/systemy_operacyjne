@@ -10,12 +10,15 @@
 #include "commons_ext.h"
 
 void signalHandler(int signal);
-void errorSignalHAndler(int signal);
+void registerErrorSignalHAndler(int signal);
+void terminateSignalHandler(int signal);
 int registerClient(char *name);
 int sendMessage(char *name, char *message);
+IPC_message constructMessage(char *receiver, char command, char *name, char *text);
 long self_id;
 int msgid;
 char self_name[NAME_MAX_L + 1];
+IPC_message msg;
 
 int main(int argc, char *argv[])
 {
@@ -43,7 +46,8 @@ int main(int argc, char *argv[])
 	else printf("Message Queue ID: %d\n", msgid);
 
 	signal(SIGUSR1, signalHandler);
-	signal(SIGUSR2, errorSignalHAndler);
+	signal(SIGUSR2, registerErrorSignalHAndler);
+	signal(SIGTERM, terminateSignalHandler);
 
 	strcpy(self_name, argv[1]);
 	self_id = hash(self_name, strlen(self_name));
@@ -81,43 +85,59 @@ int main(int argc, char *argv[])
 
 void signalHandler(int signal)
 {
-	IPC_message msg;
 	msgrcv(msgid, &msg, sizeof(msg), self_id, 0);
-    printf("Message received: \"%s\"\n", msg.messageText);
+    printf("Message received:\n\n%s:%s\n\n", msg.messageText.name, msg.messageText.text);
+	return;
 }
 
 int registerClient(char *name)
 {
-	IPC_message msg;
-	msg.messageType = ADMIN_ID;
-	msg.messageText->command = REG_COMMAND;
-	strcpy(msg.messageText->name,)
-	sprintf(msg.messageText, "%c:%s,%d", REG_COMMAND, self_name, getpid());
-	//strcpy(msg.messageText, strcat('0', ':', self_name, ',', itoa(getpid()))	//msg.messageText = strcat('0', ':', self_name, ',', itoa(getpid()));
+	//could cast to char pointer and 4 bytes would be treated as 4 chars and then recast back to int,
+	//but just calculating sprintf (why isn't there itoa on linux?!) and then atoi will allow easier human readability for debugging
+	char pid[5]; //standard pid max value is 32768 so I'm assuming 5 chars 
+	sprintf(pid, "%d", getpid());
+	IPC_message msg = constructMessage(ADMIN_NAME, '0', self_name, pid); 
 	msgsnd(msgid, &msg, sizeof(msg), 0);
-	printf("Sending: \"%s\", to server!\n", msg.messageText);
+	printf("Sending: \"%s\", to server!\n", msg.messageText.name);
 }
 
 int sendMessage(char *name, char *message)
 {
-	IPC_message admMsg;
-	IPC_message msg;
-
-	admMsg.messageType	= ADMIN_ID;
-	sprintf(admMsg.messageText, "%c:%s", SIGNAL_COMMAND, name);
-
-	msg.messageType = (hash(name, strlen(name)));
-	strcpy(msg.messageText, message);
+	IPC_message admMsg = constructMessage(ADMIN_NAME, '2', name, "");
+	IPC_message msg = constructMessage(name, '2', self_name, message);
 
 	msgsnd(msgid, &admMsg, sizeof(admMsg), 0);
 	msgsnd(msgid, &msg, sizeof(msg), 0);
 	
-	printf("Sending: \"%s\", to server!\n", admMsg.messageText);
-	printf("Sending: \"%s\", to: %s, %ld\n", msg.messageText, name, msg.messageType);
+	printf("Sending: \"%c:%s:%s\", to server!\n", admMsg.messageText.command, admMsg.messageText.name, admMsg.messageText.text);
+	printf("Sending: \"%s\", to: %s\n", msg.messageText.text, msg.messageText.name);
 }
 
-void errorSignalHAndler(int signal)
+void registerErrorSignalHAndler(int signal)
 {
-	printf("Name already registered, exiting!\n");
+	printf("Unable to register, exiting!\n");
 	exit(1);
+}
+
+void terminateSignalHandler(int signal)
+{
+	printf("Server requested termination, exiting!\n");
+	exit(1);
+}
+
+IPC_message constructMessage(char *receiver, char command, char *name, char *text)
+{
+	IPC_message msg;
+	if(!strcmp(ADMIN_NAME, receiver))
+	{
+		msg.messageType = ADMIN_ID;
+	}
+	else
+	{
+		msg.messageType = hash(receiver, strlen(receiver));
+	}
+	msg.messageText.command = command;
+	strcpy(msg.messageText.name, name);
+	strcpy(msg.messageText.text, text);
+	return msg;
 }
