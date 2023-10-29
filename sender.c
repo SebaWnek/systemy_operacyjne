@@ -21,6 +21,12 @@ int main(int argc, char *argv[])
 	key_t key = ftok(KEY_SEED, KEY_ID);
 	int msgid = msgget(key, 0666);
 
+	if(msgid == -1)
+	{
+		perror("Unable to find queue!");
+		exit(1);
+	}
+
 	printf("Message Queue ID: %d\n", msgid);
 
 	msg.messageType = hash(name, strlen(name));
