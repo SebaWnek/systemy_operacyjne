@@ -8,7 +8,7 @@
             "name": "Server extended",
             "type": "cppdbg",
             "request": "launch",
-            "program": "${workspaceFolder}/server",
+            "program": "${workspaceFolder}/extended/bin/server",
             "args": [],
             "stopAtEntry": false,
             "cwd": "${workspaceFolder}",
@@ -29,7 +29,7 @@
             "name": "Client extended",
             "type": "cppdbg",
             "request": "launch",
-            "program": "${workspaceFolder}/client",
+            "program": "${workspaceFolder}/extended/bin/client",
             "args": 
             [
                 "wneku"

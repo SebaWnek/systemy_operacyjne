@@ -2,7 +2,7 @@
 #include <stdbool.h>
 #include <stdio.h>
 #include <ctype.h>
-#include "commons.h"
+#include "commons_ext.h"
 
 #define HASH_BASE 4
 
@@ -38,7 +38,7 @@ bool getString(char *string, int length, bool spaceAllowed)
         {
                 if(!spaceAllowed && isspace(c))
                 {
-                        fprintf(stderr, "String can't contain white space characters!");
+                        perror("String can't contain white space characters!\n");
                         return false;
                 }
                 if (i < length)

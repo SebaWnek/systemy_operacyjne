@@ -7,11 +7,13 @@
             "command": "/usr/bin/gcc",
             "args": [
                 "-g",
-                "${workspaceFolder}/server_ext.c",
-                "${workspaceFolder}/commons_ext.c",
+                "${workspaceFolder}/extended/server_ext.c",
+                "${workspaceFolder}/extended/commons_ext.c",
                 "-lm",
                 "-o",
-                "${workspaceFolder}/server"
+                "${workspaceFolder}/extended/bin/server",
+                "-D",
+                "DEBUG"
             ],
             "options": {
                 "cwd": "/usr/bin"
@@ -30,11 +32,13 @@
             "command": "/usr/bin/gcc",
             "args": [
                 "-g",
-                "${workspaceFolder}/client_ext.c",
-                "${workspaceFolder}/commons_ext.c",
+                "${workspaceFolder}/extended/client_ext.c",
+                "${workspaceFolder}/extended/commons_ext.c",
                 "-lm",
                 "-o",
-                "${workspaceFolder}/client"
+                "${workspaceFolder}/extended/bin/client",
+                "-D",
+                "DEBUG"
             ],
             "options": {
                 "cwd": "/usr/bin"

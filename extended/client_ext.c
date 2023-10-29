@@ -22,13 +22,14 @@ IPC_message msg;
 
 int main(int argc, char *argv[])
 {
+#ifdef DEBUG
 	printf("Arguments:\n");
 	for(int i = 0; i < argc; i++)
 		printf("%s\n", argv[i]);
-
+#endif
 	if(argc != 2)
 	{
-		fprintf(stderr, "Invalid argument number!\n");
+		perror("Invalid argument number!\n");
 		return 1;
 	}
 
@@ -51,7 +52,7 @@ int main(int argc, char *argv[])
 
 	strcpy(self_name, argv[1]);
 	self_id = hash(self_name, strlen(self_name));
-	registerClient(self_name);
+	registerClient(self_name); //No error check as server will just kill client if unable to register
 
     printf("Type %s to quit at any time!\n", EXIT_STRING);
 
@@ -68,7 +69,7 @@ int main(int argc, char *argv[])
 		if(!strcmp(name, EXIT_STRING)) break;
 
 		printf("Type message (max %d characters):\n", MSG_MAX_L);
-		correct = getString(message, MSG_MAX_L, false);
+		correct = getString(message, MSG_MAX_L, true);
 		while(!correct)
 		{
 			printf("Something went wrong! Try again:\n");
@@ -85,20 +86,33 @@ int main(int argc, char *argv[])
 
 void signalHandler(int signal)
 {
-	msgrcv(msgid, &msg, sizeof(msg), self_id, 0);
-    printf("Message received:\n\n%s:%s\n\n", msg.messageText.name, msg.messageText.text);
+	if(msgrcv(msgid, &msg, sizeof(msg), self_id, 0) == -1)
+	{
+		perror("Error receiving message!\n");
+		exit(1);
+	}
+    printf("----------Message received:----------\n\n%s:%s\n\n-------------End message-------------\n", msg.messageText.name, msg.messageText.text);
 	return;
 }
 
 int registerClient(char *name)
 {
-	//could cast to char pointer and 4 bytes would be treated as 4 chars and then recast back to int,
-	//but just calculating sprintf (why isn't there itoa on linux?!) and then atoi will allow easier human readability for debugging
-	char pid[5]; //standard pid max value is 32768 so I'm assuming 5 chars 
+	/*
+	*	could cast to char pointer and 4 bytes would be treated as 4 chars and then recast back to int,
+	*	but just calculating sprintf (why isn't there itoa on linux?!) and then atoi will allow easier human readability for debugging
+	*	also that way I can just use same IPC_message struct
+	*/
+	char pid[6]; //standard pid max value is 32768 so I'm assuming 5 chars + '\0' 
 	sprintf(pid, "%d", getpid());
 	IPC_message msg = constructMessage(ADMIN_NAME, '0', self_name, pid); 
-	msgsnd(msgid, &msg, sizeof(msg), 0);
+	if(msgsnd(msgid, &msg, sizeof(msg), 0) == -1)
+	{
+		perror("Error sending message!\n");
+		exit(1);
+	}
+#ifdef DEBUG
 	printf("Sending: \"%s\", to server!\n", msg.messageText.name);
+#endif
 }
 
 int sendMessage(char *name, char *message)
@@ -106,11 +120,20 @@ int sendMessage(char *name, char *message)
 	IPC_message admMsg = constructMessage(ADMIN_NAME, '2', name, "");
 	IPC_message msg = constructMessage(name, '2', self_name, message);
 
-	msgsnd(msgid, &admMsg, sizeof(admMsg), 0);
-	msgsnd(msgid, &msg, sizeof(msg), 0);
-	
+	if(msgsnd(msgid, &admMsg, sizeof(admMsg), 0) == -1)
+	{
+		perror("Error sending message!\n");
+		exit(1);
+	}
+	if(msgsnd(msgid, &msg, sizeof(msg), 0) == -1)
+	{
+		perror("Error sending message!\n");
+		exit(1);
+	}
+#ifdef DEBUG
 	printf("Sending: \"%c:%s:%s\", to server!\n", admMsg.messageText.command, admMsg.messageText.name, admMsg.messageText.text);
 	printf("Sending: \"%s\", to: %s\n", msg.messageText.text, msg.messageText.name);
+#endif
 }
 
 void registerErrorSignalHAndler(int signal)

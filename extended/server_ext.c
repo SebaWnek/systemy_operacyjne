@@ -36,18 +36,28 @@ int main()
 	IPC_message current_msg;
 	key_t key;
 	msg_data *data;
-
+#ifdef DEBUG
 	printf("Message queue starting...\n");
-
+#endif
 	key = ftok(KEY_SEED, KEY_ID);
 	msgid = msgget(key, 0666 | IPC_CREAT);
-
+	if(msgid == -1)
+	{
+		perror("Unable to create queue!");
+		exit(1);
+	}
 	printf("Message Queue ID: %d\n", msgid);
+#ifdef DEBUG
 	printf("Message queue created!\n");
+#endif
 
 	while(true)
 	{
-        msgrcv(msgid, &current_msg, sizeof(current_msg), ADMIN_ID , 0);
+		if(msgrcv(msgid, &current_msg, sizeof(current_msg), ADMIN_ID , 0) == -1)
+		{
+			perror("Error receiving message!");
+			exit(1);
+		}
         printf("Message received: %c:%s:%s\n", current_msg.messageText.command, current_msg.messageText.name, current_msg.messageText.text);
 		
 		switch(current_msg.messageText.command)
@@ -62,7 +72,7 @@ int main()
 				signalClient(&current_msg);
 				break;
 			default:
-				fprintf(stderr, "Incorrect command!\n");
+				perror("Incorrect command!\n");
 		}
 	}
 
@@ -77,7 +87,7 @@ int registerClient(IPC_message *msg)
 	__pid_t pid = atoi(msg->messageText.text);
 	if (clients_count >= MAX_CLIENTS)
 	{
-		fprintf(stderr, "Max clients number reached\n");
+		perror("Max clients number reached\n");
 		//Using SIGUSR2 to signal client it wasn't able to be registered
 		kill(pid,SIGUSR2);
 		return 1;
@@ -112,7 +122,7 @@ int signalClient(IPC_message *msg)
 	int pid = getPid(msg->messageText.name);
 	if(pid == -1)
 	{
-		printf("No client with \"%s\" name registered!\n", msg->messageText.name);
+		fprintf(stderr, "No client with \"%s\" name registered!\n", msg->messageText.name);
 		return 1;
 	}
 	kill(pid, SIGUSR1);

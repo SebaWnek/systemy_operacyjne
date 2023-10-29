@@ -16,7 +16,11 @@ int main()
 
 	key = ftok(KEY_SEED, KEY_ID);
 	msgid = msgget(key, 0666 | IPC_CREAT);
-
+	if(msgid == -1)
+	{
+		perror("Unable to create queue!");
+		exit(1);
+	}
 	printf("Message Queue ID: %d\n", msgid);
 	printf("Message queue created!\nType Q key to stop:\n");
 
