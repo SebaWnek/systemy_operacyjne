@@ -35,7 +35,6 @@ int main()
 	
 	IPC_message current_msg;
 	key_t key;
-	msg_data *data;
 #ifdef DEBUG
 	printf("Message queue starting...\n");
 #endif
@@ -83,7 +82,6 @@ int main()
 
 int registerClient(IPC_message *msg)
 {
-	int existing;
 	__pid_t pid = atoi(msg->messageText.text);
 	if (clients_count >= MAX_CLIENTS)
 	{
@@ -113,7 +111,7 @@ int registerClient(IPC_message *msg)
 
 int unregisterClient(IPC_message *msg)
 {
-	//TBD as this will require moving structs in array when removing not last one, maybe could use linked list?
+	//TBD as this will require moving structs in array when removing not last one, maybe could use linked list? But don't think it's necessary now
 }
 
 //Using SIGUSR1 to inform client about incoming message
@@ -133,7 +131,6 @@ int signalClient(IPC_message *msg)
 int getPid(char *name)
 {
 	int found = 1;
-	int result = -1;
 	for(int i = 0; i < clients_count; i++)
 	{
 		found = strcmp(name, clients[i].name);

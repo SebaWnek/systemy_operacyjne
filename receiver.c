@@ -18,7 +18,6 @@ int main(int argc, char *argv[])
 	for(int i = 0; i < argc; i++)
 		printf("%s\n", argv[i]);
 
-	char message[MSG_MAX_L];
 	char *name = argv[1];
 	IPC_message msg;
 	key_t key = ftok(KEY_SEED, KEY_ID);

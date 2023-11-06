@@ -12,11 +12,12 @@
 void signalHandler(int signal);
 void registerErrorSignalHAndler(int signal);
 void terminateSignalHandler(int signal);
-int registerClient(char *name);
-int sendMessage(char *name, char *message);
+void registerClient();
+void sendMessage(char *name, char *message);
 IPC_message constructMessage(char *receiver, char command, char *name, char *text);
 long self_id;
 int msgid;
+bool signaled;
 char self_name[NAME_MAX_L + 1];
 IPC_message msg;
 
@@ -67,6 +68,12 @@ int main(int argc, char *argv[])
 		}
 
 		if(!strcmp(name, EXIT_STRING)) break;
+		
+		if(signaled) //otherwise it was crashing after returning from signal handler
+		{
+			signaled = false;
+			continue;
+		}
 
 		printf("Type message (max %d characters):\n", MSG_MAX_L);
 		correct = getString(message, MSG_MAX_L, true);
@@ -77,6 +84,12 @@ int main(int argc, char *argv[])
 		}
 
 		if(!strcmp(message, EXIT_STRING)) break;
+
+		if(signaled) //otherwise it was crashing after returning from signal handler
+		{
+			signaled = false;
+			continue;
+		}
 
 		sendMessage(name, message);
 	}
@@ -92,10 +105,11 @@ void signalHandler(int signal)
 		exit(1);
 	}
     printf("----------Message received:----------\n\n%s:%s\n\n-------------End message-------------\n", msg.messageText.name, msg.messageText.text);
+	signaled = true;
 	return;
 }
 
-int registerClient(char *name)
+void registerClient()
 {
 	/*
 	*	could cast to char pointer and 4 bytes would be treated as 4 chars and then recast back to int,
@@ -115,7 +129,7 @@ int registerClient(char *name)
 #endif
 }
 
-int sendMessage(char *name, char *message)
+void sendMessage(char *name, char *message)
 {
 	IPC_message admMsg = constructMessage(ADMIN_NAME, '2', name, "");
 	IPC_message msg = constructMessage(name, '2', self_name, message);
