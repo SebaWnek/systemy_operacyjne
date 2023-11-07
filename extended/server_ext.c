@@ -1,3 +1,6 @@
+#define _XOPEN_SOURCE 1 //to remove implicit declaration warning for kill() without using posix version
+#define _XOPEN_SOURCE_EXTENDED 1 //same as above
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <sys/ipc.h>
@@ -111,7 +114,37 @@ int registerClient(IPC_message *msg)
 
 int unregisterClient(IPC_message *msg)
 {
-	//TBD as this will require moving structs in array when removing not last one, maybe could use linked list? But don't think it's necessary now
+	int toRemove = -1;
+	for(int i = 0; i < clients_count; i++)
+	{
+		if(!strcmp(msg->messageText.name, clients[i].name))
+		{
+			toRemove = i;
+			break;
+		}
+	}
+
+	if(toRemove >= 0)
+	{
+		pid_t pid = clients[toRemove].processPid;
+		// Shift elements to fill the gap
+		for (int i = toRemove; i < clients_count - 1; i++) {
+			clients[i] = clients[i + 1];
+		}
+
+		// Clear the last element
+		memset(&clients[clients_count - 1], 0, sizeof(client_data));
+
+		clients_count--;
+
+		printf("Unregistered client name: %s, pid: %d\n", msg->messageText.name, pid);
+	}
+	else
+	{
+		fprintf(stderr, "No client with \"%s\" name registered!\n", msg->messageText.name);
+		return 1;
+	}
+	return 0;
 }
 
 //Using SIGUSR1 to inform client about incoming message
@@ -144,6 +177,7 @@ int getPid(char *name)
 
 void exitHandler(int signal)
 {
+	(void)signal; //to disable unused parameter warning
 	//Using SIGTERM to terminate all clients
 	for(int i = 0; i < clients_count; i++)
 	{

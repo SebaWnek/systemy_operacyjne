@@ -13,6 +13,8 @@ void signalHandler(int signal);
 void registerErrorSignalHAndler(int signal);
 void terminateSignalHandler(int signal);
 void registerClient();
+void unregisterClient();
+void exitRequestedHandler(int signal);
 void sendMessage(char *name, char *message);
 IPC_message constructMessage(char *receiver, char command, char *name, char *text);
 long self_id;
@@ -50,6 +52,7 @@ int main(int argc, char *argv[])
 	signal(SIGUSR1, signalHandler);
 	signal(SIGUSR2, registerErrorSignalHAndler);
 	signal(SIGTERM, terminateSignalHandler);
+	signal(SIGINT, exitRequestedHandler);
 
 	strcpy(self_name, argv[1]);
 	self_id = hash(self_name, strlen(self_name));
@@ -99,6 +102,7 @@ int main(int argc, char *argv[])
 
 void signalHandler(int signal)
 {
+	(void)signal; //to disable unused parameter warning
 	if(msgrcv(msgid, &msg, sizeof(msg), self_id, 0) == -1)
 	{
 		perror("Error receiving message!\n");
@@ -152,12 +156,14 @@ void sendMessage(char *name, char *message)
 
 void registerErrorSignalHAndler(int signal)
 {
+	(void)signal; //to disable unused parameter warning
 	printf("Unable to register, exiting!\n");
 	exit(1);
 }
 
 void terminateSignalHandler(int signal)
 {
+	(void)signal; //to disable unused parameter warning
 	printf("Server requested termination, exiting!\n");
 	exit(1);
 }
@@ -177,4 +183,21 @@ IPC_message constructMessage(char *receiver, char command, char *name, char *tex
 	strcpy(msg.messageText.name, name);
 	strcpy(msg.messageText.text, text);
 	return msg;
+}
+
+void unregisterClient()
+{
+	IPC_message msg = constructMessage(ADMIN_NAME, '1', self_name, "");
+	if(msgsnd(msgid, &msg, sizeof(msg), 0) == -1)
+	{
+		perror("Unregistered, exiting!\n");
+		exit(1);
+	}
+}
+void exitRequestedHandler(int signal)
+{
+	(void)signal; //to disable unused parameter warning
+	printf("Server requested termination, exiting!\n");
+	unregisterClient();
+	exit(1);
 }
